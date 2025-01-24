@@ -1,0 +1,299 @@
+{
+    "time": 1720448818.6458669,
+    "messages": [
+        {
+            "role": "system",
+            "content": "You are a debugging assistant. You will be presented with a failing test, and tools (functions) to access the source code of the system under test (SUT). Your task is to provide a step-by-step explanation of how the bug occurred, based on the failing test and the information you retrieved using tests about the SUT. You will be given 9 chances to interact with functions to gather relevant information. An example answer would look like follows.\n\nTitle: Diagnosis of test `testGenerateURLFragment`\nDetails: The test `testGenerateURLFragment` checks whether HTML entities such as `&quot;` are correctly escaped to their corresponding character by the `StandardToolTipTagFragmentGenerator.generateToolTipFragment` method. However, the test failure indicates that this is not the case. Following the execution path, we find that `StandardToolTipTagFragmentGenerator.generateToolTipFragment` is not escaping any HTML code; instead, it is using its input `toolTipText` as is. Consequently, un-escaped strings are being returned, which leads to the error demonstrated by the test.\n\nAfter providing this diagnosis, you will be prompted to suggest which methods would be the best locations to be fixed. The answers should be in the form of `ClassName.MethodName(ArgType1, ArgType2, ...)` without commentary (one per line), as your answer will be automatically processed before finally being presented to the user."
+        },
+        {
+            "role": "user",
+            "content": "The test `['test.worker_external_task_test.WorkerExternalTaskTest.test_external_dependency_completes_later()']` failed.\nThe test looks like:\n\n```python\n121 :     def test_external_dependency_completes_later(self):\n122 :         \"\"\"\n123 :         Test that an external dependency that is not `complete` when luigi is invoked, but \\\n124 :         becomes `complete` while the workflow is executing is re-evaluated and\n125 :         allows dependencies to run.\n126 :         \"\"\"\n127 :         assert luigi.configuration.get_config().getboolean('core',\n128 :                                                            'retry-external-tasks',\n129 :                                                            False) is True\n130 : \n131 :         tempdir = tempfile.mkdtemp(prefix='luigi-test-')\n132 : \n133 :         with patch('random.randint', return_value=0.1):\n134 :             test_task = TestTask(tempdir=tempdir, complete_after=3)\n135 :             self._build([test_task])\n136 : \n137 :         assert os.path.exists(test_task.dep_path)\n138 :         assert os.path.exists(test_task.output_path)\n139 : \n140 :         os.unlink(test_task.dep_path)\n141 :         os.unlink(test_task.output_path)\n142 :         os.rmdir(tempdir)\n143 : \n144 :         # complete() is called once per failure, twice per success\n145 :         assert test_task.dependency.times_called == 4\n```\n\nIt failed with the following error message and call stack:\n\n```\nE               luigi.parameter.UnknownParameterException: scheduler[args=(), kwargs={'retry_delay': 0.01, 'remove_delay': 3, 'worker_disconnect_delay': 3, 'disable_persist': 3, 'disable_window': 5, 'disable_failures': 2, 'prune_on_get_work': True}]: unknown parameter prune_on_get_work\n>       self.scheduler = CentralPlannerScheduler(retry_delay=0.01,\ntest/worker_external_task_test.py:78: \nluigi/scheduler.py:508: in __init__\nluigi/scheduler.py:508: in __init__\n    self._config = config or scheduler(**kwargs)\nluigi/task_register.py:86: in __call__\n    param_values = cls.get_param_values(params, args, kwargs)\n\n>               raise parameter.UnknownParameterException('%s: unknown parameter %s' % (exc_desc, param_name))\nluigi/task.py:227: UnknownParameterException\n  /home/user/BugsInPy/temp/projects/luigi/luigi/parameter.py:533: DeprecationWarning: invalid escape sequence \\d\n  /home/user/BugsInPy/temp/projects/luigi/luigi/parameter.py:545: DeprecationWarning: invalid escape sequence \\d\n  /opt/conda/envs/c707e723d516669fe502b5e71c081ee7/lib/python3.8/site-packages/tornado/httputil.py:105: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3, and in 3.9 it will stop working\n```\n\nStart by calling the `get_covered_packages` function."
+        },
+        {
+            "role": "assistant",
+            "content": null,
+            "function_call": {
+                "name": "get_covered_packages",
+                "arguments": "{}"
+            }
+        },
+        {
+            "role": "function",
+            "name": "get_covered_packages",
+            "content": "[\"luigi.contrib.webhdfs\", \"luigi.six\", \"luigi.contrib.hive\", \"luigi.tools.range\", \"luigi.contrib.hdfs.format\", \"luigi.date_interval\", \"luigi.contrib.spark\", \"luigi.contrib.sqla\", \"luigi.contrib.hadoop\", \"luigi.mock\", \"luigi.scheduler\", \"luigi.db_task_history\", \"luigi.server\", \"luigi.contrib.target\", \"luigi.contrib.scalding\", \"luigi.contrib.hadoop_jar\", \"luigi.contrib.pyspark_runner\", \"luigi.parameter\", \"luigi.contrib.ssh\", \"luigi.contrib\", \"luigi.contrib.redshift\", \"luigi.task\", \"luigi.rpc\", \"luigi.contrib.pig\", \"luigi.format\", \"luigi.interface\", \"luigi.util\", \"luigi.contrib.rdbms\", \"luigi.s3\", \"luigi.file\", \"luigi.task_register\", \"luigi.configuration\", \"luigi.target\", \"luigi.contrib.mysqldb\", \"dummy_test_module.not_imported\", \"luigi.contrib.hdfs\", \"luigi.task_history\", \"luigi.tools\", \"luigi\", \"luigi.worker\"]"
+        },
+        {
+            "role": "assistant",
+            "content": null,
+            "function_call": {
+                "name": "get_failing_tests_covered_classes",
+                "arguments": "{\"package_name\":\"luigi.scheduler\"}"
+            }
+        },
+        {
+            "role": "function",
+            "name": "get_failing_tests_covered_classes",
+            "content": "[\"CentralPlannerScheduler\", \"SimpleTaskState\", \"Failures\", \"Worker\", \"Task\"]"
+        },
+        {
+            "role": "assistant",
+            "content": null,
+            "function_call": {
+                "name": "get_failing_tests_covered_methods_for_class",
+                "arguments": "{\"class_name\":\"luigi.scheduler.CentralPlannerScheduler\"}"
+            }
+        },
+        {
+            "role": "function",
+            "name": "get_failing_tests_covered_methods_for_class",
+            "content": "[\".__init__\", \".dump\", \".prune\", \".update\", \"._update_priority\", \".add_task\", \".add_worker\", \".update_resources\", \"._has_resources\", \"._used_resources\", \"._rank\", \".not_done\", \"._schedulable\", \".get_work\", \".ping\", \"._upstream_status\", \"._serialize_task\", \".graph\", \"._recurse_deps\", \".dep_graph\", \".task_list\", \".worker_list\", \".inverse_dep_graph\", \"._traverse_inverse_deps\", \".task_search\", \".re_enable_task\", \".fetch_error\", \"._update_task_history\"]"
+        },
+        {
+            "role": "assistant",
+            "content": null,
+            "function_call": {
+                "name": "get_code_snippet",
+                "arguments": "{\"signature\":\"luigi.scheduler.CentralPlannerScheduler.__init__\"}"
+            }
+        },
+        {
+            "role": "function",
+            "name": "get_code_snippet",
+            "content": "\"501 :     def __init__(self, config=None, resources=None, task_history_impl=None, **kwargs):\\n502 :         \\\"\\\"\\\"\\n503 :         Keyword Arguments:\\n504 :         :param config: an object of class \\\"scheduler\\\" or None (in which the global instance will be used)\\n505 :         :param resources: a dict of str->int constraints\\n506 :         :param task_history_override: ignore config and use this object as the task history\\n507 :         \\\"\\\"\\\"\\n508 :         self._config = config or scheduler(**kwargs)\\n509 :         self._state = SimpleTaskState(self._config.state_path)\\n510 : \\n511 :         if task_history_impl:\\n512 :             self._task_history = task_history_impl\\n513 :         elif self._config.record_task_history:\\n514 :             from luigi import db_task_history  # Needs sqlalchemy, thus imported here\\n515 :             self._task_history = db_task_history.DbTaskHistory()\\n516 :         else:\\n517 :             self._task_history = history.NopHistory()\\n518 :         self._resources = resources or configuration.get_config().getintdict('resources')  # TODO: Can we make this a Parameter?\\n519 :         self._make_task = functools.partial(\\n520 :             Task, disable_failures=self._config.disable_failures,\\n521 :             disable_hard_timeout=self._config.disable_hard_timeout,\\n522 :             disable_window=self._config.disable_window)\""
+        },
+        {
+            "role": "assistant",
+            "content": null,
+            "function_call": {
+                "name": "get_code_snippet",
+                "arguments": "{\"signature\":\"luigi.scheduler.CentralPlannerScheduler.prune\"}"
+            }
+        },
+        {
+            "role": "function",
+            "name": "get_code_snippet",
+            "content": "\"530 :     def prune(self):\\n531 :         logger.info(\\\"Starting pruning of task graph\\\")\\n532 :         remove_workers = []\\n533 :         for worker in self._state.get_active_workers():\\n534 :             if worker.prune(self._config):\\n535 :                 logger.info(\\\"Worker %s timed out (no contact for >=%ss)\\\", worker, self._config.worker_disconnect_delay)\\n536 :                 remove_workers.append(worker.id)\\n537 : \\n538 :         self._state.inactivate_workers(remove_workers)\\n539 : \\n540 :         assistant_ids = set(w.id for w in self._state.get_assistants())\\n541 :         remove_tasks = []\\n542 : \\n543 :         if assistant_ids:\\n544 :             necessary_tasks = self._state.get_necessary_tasks()\\n545 :         else:\\n546 :             necessary_tasks = ()\\n547 : \\n548 :         for task in self._state.get_active_tasks():\\n549 :             if task.id not in necessary_tasks and self._state.prune(task, self._config, assistant_ids):\\n550 :                 remove_tasks.append(task.id)\\n551 : \\n552 :         self._state.inactivate_tasks(remove_tasks)\\n553 : \\n554 :         logger.info(\\\"Done pruning task graph\\\")\""
+        },
+        {
+            "role": "assistant",
+            "content": null,
+            "function_call": {
+                "name": "get_code_snippet",
+                "arguments": "{\"signature\":\"luigi.scheduler.CentralPlannerScheduler.get_work\"}"
+            }
+        },
+        {
+            "role": "function",
+            "name": "get_code_snippet",
+            "content": "\"699 :     def get_work(self, host=None, assistant=False, **kwargs):\\n700 :         # TODO: remove any expired nodes\\n701 : \\n702 :         # Algo: iterate over all nodes, find the highest priority node no dependencies and available\\n703 :         # resources.\\n704 : \\n705 :         # Resource checking looks both at currently available resources and at which resources would\\n706 :         # be available if all running tasks died and we rescheduled all workers greedily. We do both\\n707 :         # checks in order to prevent a worker with many low-priority tasks from starving other\\n708 :         # workers with higher priority tasks that share the same resources.\\n709 : \\n710 :         # TODO: remove tasks that can't be done, figure out if the worker has absolutely\\n711 :         # nothing it can wait for\\n712 : \\n713 :         worker_id = kwargs['worker']\\n714 :         # Return remaining tasks that have no FAILED descendents\\n715 :         self.update(worker_id, {'host': host})\\n716 :         if assistant:\\n717 :             self.add_worker(worker_id, [('assistant', assistant)])\\n718 :         best_task = None\\n719 :         locally_pending_tasks = 0\\n720 :         running_tasks = []\\n721 :         upstream_table = {}\\n722 : \\n723 :         greedy_resources = collections.defaultdict(int)\\n724 :         n_unique_pending = 0\\n725 : \\n726 :         worker = self._state.get_worker(worker_id)\\n727 :         if worker.is_trivial_worker(self._state):\\n728 :             relevant_tasks = worker.get_pending_tasks(self._state)\\n729 :             used_resources = collections.defaultdict(int)\\n730 :             greedy_workers = dict()  # If there's no resources, then they can grab any task\\n731 :         else:\\n732 :             relevant_tasks = self._state.get_pending_tasks()\\n733 :             used_resources = self._used_resources()\\n734 :             greedy_workers = dict((worker.id, worker.info.get('workers', 1))\\n735 :                                   for worker in self._state.get_active_workers())\\n736 :         tasks = list(relevant_tasks)\\n737 :         tasks.sort(key=self._rank(among_tasks=tasks), reverse=True)\\n738 : \\n739 :         for task in tasks:\\n740 :             upstream_status = self._upstream_status(task.id, upstream_table)\\n741 :             in_workers = (assistant and task.workers) or worker_id in task.workers\\n742 :             if task.status == RUNNING and in_workers:\\n743 :                 # Return a list of currently running tasks to the client,\\n744 :                 # makes it easier to troubleshoot\\n745 :                 other_worker = self._state.get_worker(task.worker_running)\\n746 :                 more_info = {'task_id': task.id, 'worker': str(other_worker)}\\n747 :                 if other_worker is not None:\\n748 :                     more_info.update(other_worker.info)\\n749 :                     running_tasks.append(more_info)\\n750 : \\n751 :             if task.status == PENDING and in_workers and upstream_status != UPSTREAM_DISABLED:\\n752 :                 locally_pending_tasks += 1\\n753 :                 if len(task.workers) == 1 and not assistant:\\n754 :                     n_unique_pending += 1\\n755 : \\n756 :             if task.status == RUNNING and (task.worker_running in greedy_workers):\\n757 :                 greedy_workers[task.worker_running] -= 1\\n758 :                 for resource, amount in six.iteritems((task.resources or {})):\\n759 :                     greedy_resources[resource] += amount\\n760 : \\n761 :             if not best_task and self._schedulable(task) and self._has_resources(task.resources, greedy_resources):\\n762 :                 if in_workers and self._has_resources(task.resources, used_resources):\\n763 :                     best_task = task\\n764 :                 else:\\n765 :                     workers = itertools.chain(task.workers, [worker_id]) if assistant else task.workers\\n766 :                     for task_worker in workers:\\n767 :                         if greedy_workers.get(task_worker, 0) > 0:\\n768 :                             # use up a worker\\n769 :                             greedy_workers[task_worker] -= 1\\n770 : \\n771 :                             # keep track of the resources used in greedy scheduling\\n772 :                             for resource, amount in six.iteritems((task.resources or {})):\\n773 :                                 greedy_resources[resource] += amount\\n774 : \\n775 :                             break\\n776 : \\n777 :         reply = {'n_pending_tasks': locally_pending_tasks,\\n778 :                  'running_tasks': running_tasks,\\n779 :                  'task_id': None,\\n780 :                  'n_unique_pending': n_unique_pending}\\n781 : \\n782 :         if best_task:\\n783 :             self._state.set_status(best_task, RUNNING, self._config)\\n784 :             best_task.worker_running = worker_id\\n785 :             best_task.time_running = time.time()\\n786 :             self._update_task_history(best_task.id, RUNNING, host=host)\\n787 : \\n788 :             reply['task_id'] = best_task.id\\n789 :             reply['task_family'] = best_task.family\\n790 :             reply['task_module'] = getattr(best_task, 'module', None)\\n791 :             reply['task_params'] = best_task.params\\n792 : \\n793 :         return reply\""
+        },
+        {
+            "role": "assistant",
+            "content": "### Diagnosis:\n\nThe test `test.worker_external_task_test.WorkerExternalTaskTest.test_external_dependency_completes_later()` fails because of an `UnknownParameterException` due to an unrecognized parameter (`prune_on_get_work`) passed to the `CentralPlannerScheduler` constructor. \n\nThe `CentralPlannerScheduler` constructor (`__init__`) in `luigi/scheduler.py` accepts a `config` object that is expected to handle the keyword arguments. When the `config` is not provided, it initializes a default scheduler instance using the provided `kwargs`. However, the current implementation of the scheduler does not recognize the `prune_on_get_work` parameter, resulting in an exception.\n\nKey points in the code:\n- `CentralPlannerScheduler.__init__` (line 508) initializes the `_config` with `scheduler(**kwargs)`.\n- The scheduler initialized with the `kwargs` must have support for `prune_on_get_work` which is missing.\n\n### Affected methods:\nFixes should be considered in the following locations:\n\n- `luigi.scheduler.CentralPlannerScheduler.__init__(config=None, resources=None, task_history_impl=None, **kwargs)`\n- `luigi.scheduler.CentralPlannerScheduler.get_work(host=None, assistant=False, **kwargs)` (since `prune_on_get_work` might be relevant here based on context).\n  \n### Suggested Fix Locations:\n\nluigi.scheduler.CentralPlannerScheduler.__init__(config=None, resources=None, task_history_impl=None, **kwargs)\nluigi.scheduler.CentralPlannerScheduler.get_work(host=None, assistant=False, **kwargs)"
+        },
+        {
+            "role": "user",
+            "content": "Based on the available information, provide the signatures of the most likely culprit methods for the bug. Your answer will be processed automatically, so make sure to only answer with the accurate signatures of all likely culprits (in `ClassName.MethodName(ArgType1, ArgType2, ...)` format), without commentary (one per line). "
+        },
+        {
+            "role": "assistant",
+            "content": "luigi.scheduler.CentralPlannerScheduler.__init__(config=None, resources=None, task_history_impl=None, **kwargs)\nluigi.scheduler.CentralPlannerScheduler.get_work(host=None, assistant=False, **kwargs)"
+        }
+    ],
+    "interaction_records": {
+        "step_histories": [
+            {
+                "prompt_messages": [
+                    "m1",
+                    "m2",
+                    "m3",
+                    "m4"
+                ],
+                "response_message": "m5"
+            },
+            {
+                "prompt_messages": [
+                    "m1",
+                    "m2",
+                    "m3",
+                    "m4",
+                    "m5",
+                    "m6"
+                ],
+                "response_message": "m7"
+            },
+            {
+                "prompt_messages": [
+                    "m1",
+                    "m2",
+                    "m3",
+                    "m4",
+                    "m5",
+                    "m6",
+                    "m7",
+                    "m8"
+                ],
+                "response_message": "m9"
+            },
+            {
+                "prompt_messages": [
+                    "m1",
+                    "m2",
+                    "m3",
+                    "m4",
+                    "m5",
+                    "m6",
+                    "m7",
+                    "m8",
+                    "m9",
+                    "m10"
+                ],
+                "response_message": "m11"
+            },
+            {
+                "prompt_messages": [
+                    "m1",
+                    "m2",
+                    "m3",
+                    "m4",
+                    "m5",
+                    "m6",
+                    "m7",
+                    "m8",
+                    "m9",
+                    "m10",
+                    "m11",
+                    "m12"
+                ],
+                "response_message": "m13"
+            },
+            {
+                "prompt_messages": [
+                    "m1",
+                    "m2",
+                    "m3",
+                    "m4",
+                    "m5",
+                    "m6",
+                    "m7",
+                    "m8",
+                    "m9",
+                    "m10",
+                    "m11",
+                    "m12",
+                    "m13",
+                    "m14"
+                ],
+                "response_message": "m15"
+            }
+        ],
+        "mid_to_message": {
+            "m1": {
+                "role": "system",
+                "content": "You are a debugging assistant. You will be presented with a failing test, and tools (functions) to access the source code of the system under test (SUT). Your task is to provide a step-by-step explanation of how the bug occurred, based on the failing test and the information you retrieved using tests about the SUT. You will be given 9 chances to interact with functions to gather relevant information. An example answer would look like follows.\n\nTitle: Diagnosis of test `testGenerateURLFragment`\nDetails: The test `testGenerateURLFragment` checks whether HTML entities such as `&quot;` are correctly escaped to their corresponding character by the `StandardToolTipTagFragmentGenerator.generateToolTipFragment` method. However, the test failure indicates that this is not the case. Following the execution path, we find that `StandardToolTipTagFragmentGenerator.generateToolTipFragment` is not escaping any HTML code; instead, it is using its input `toolTipText` as is. Consequently, un-escaped strings are being returned, which leads to the error demonstrated by the test.\n\nAfter providing this diagnosis, you will be prompted to suggest which methods would be the best locations to be fixed. The answers should be in the form of `ClassName.MethodName(ArgType1, ArgType2, ...)` without commentary (one per line), as your answer will be automatically processed before finally being presented to the user."
+            },
+            "m2": {
+                "role": "user",
+                "content": "The test `['test.worker_external_task_test.WorkerExternalTaskTest.test_external_dependency_completes_later()']` failed.\nThe test looks like:\n\n```python\n121 :     def test_external_dependency_completes_later(self):\n122 :         \"\"\"\n123 :         Test that an external dependency that is not `complete` when luigi is invoked, but \\\n124 :         becomes `complete` while the workflow is executing is re-evaluated and\n125 :         allows dependencies to run.\n126 :         \"\"\"\n127 :         assert luigi.configuration.get_config().getboolean('core',\n128 :                                                            'retry-external-tasks',\n129 :                                                            False) is True\n130 : \n131 :         tempdir = tempfile.mkdtemp(prefix='luigi-test-')\n132 : \n133 :         with patch('random.randint', return_value=0.1):\n134 :             test_task = TestTask(tempdir=tempdir, complete_after=3)\n135 :             self._build([test_task])\n136 : \n137 :         assert os.path.exists(test_task.dep_path)\n138 :         assert os.path.exists(test_task.output_path)\n139 : \n140 :         os.unlink(test_task.dep_path)\n141 :         os.unlink(test_task.output_path)\n142 :         os.rmdir(tempdir)\n143 : \n144 :         # complete() is called once per failure, twice per success\n145 :         assert test_task.dependency.times_called == 4\n```\n\nIt failed with the following error message and call stack:\n\n```\nE               luigi.parameter.UnknownParameterException: scheduler[args=(), kwargs={'retry_delay': 0.01, 'remove_delay': 3, 'worker_disconnect_delay': 3, 'disable_persist': 3, 'disable_window': 5, 'disable_failures': 2, 'prune_on_get_work': True}]: unknown parameter prune_on_get_work\n>       self.scheduler = CentralPlannerScheduler(retry_delay=0.01,\ntest/worker_external_task_test.py:78: \nluigi/scheduler.py:508: in __init__\nluigi/scheduler.py:508: in __init__\n    self._config = config or scheduler(**kwargs)\nluigi/task_register.py:86: in __call__\n    param_values = cls.get_param_values(params, args, kwargs)\n\n>               raise parameter.UnknownParameterException('%s: unknown parameter %s' % (exc_desc, param_name))\nluigi/task.py:227: UnknownParameterException\n  /home/user/BugsInPy/temp/projects/luigi/luigi/parameter.py:533: DeprecationWarning: invalid escape sequence \\d\n  /home/user/BugsInPy/temp/projects/luigi/luigi/parameter.py:545: DeprecationWarning: invalid escape sequence \\d\n  /opt/conda/envs/c707e723d516669fe502b5e71c081ee7/lib/python3.8/site-packages/tornado/httputil.py:105: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3, and in 3.9 it will stop working\n```\n\nStart by calling the `get_covered_packages` function."
+            },
+            "m3": {
+                "role": "assistant",
+                "content": null,
+                "function_call": {
+                    "name": "get_covered_packages",
+                    "arguments": "{}"
+                }
+            },
+            "m4": {
+                "role": "function",
+                "name": "get_covered_packages",
+                "content": "[\"luigi.contrib.webhdfs\", \"luigi.six\", \"luigi.contrib.hive\", \"luigi.tools.range\", \"luigi.contrib.hdfs.format\", \"luigi.date_interval\", \"luigi.contrib.spark\", \"luigi.contrib.sqla\", \"luigi.contrib.hadoop\", \"luigi.mock\", \"luigi.scheduler\", \"luigi.db_task_history\", \"luigi.server\", \"luigi.contrib.target\", \"luigi.contrib.scalding\", \"luigi.contrib.hadoop_jar\", \"luigi.contrib.pyspark_runner\", \"luigi.parameter\", \"luigi.contrib.ssh\", \"luigi.contrib\", \"luigi.contrib.redshift\", \"luigi.task\", \"luigi.rpc\", \"luigi.contrib.pig\", \"luigi.format\", \"luigi.interface\", \"luigi.util\", \"luigi.contrib.rdbms\", \"luigi.s3\", \"luigi.file\", \"luigi.task_register\", \"luigi.configuration\", \"luigi.target\", \"luigi.contrib.mysqldb\", \"dummy_test_module.not_imported\", \"luigi.contrib.hdfs\", \"luigi.task_history\", \"luigi.tools\", \"luigi\", \"luigi.worker\"]"
+            },
+            "m5": {
+                "role": "assistant",
+                "content": null,
+                "function_call": {
+                    "name": "get_failing_tests_covered_classes",
+                    "arguments": "{\"package_name\":\"luigi.scheduler\"}"
+                }
+            },
+            "m6": {
+                "role": "function",
+                "name": "get_failing_tests_covered_classes",
+                "content": "[\"CentralPlannerScheduler\", \"SimpleTaskState\", \"Failures\", \"Worker\", \"Task\"]"
+            },
+            "m7": {
+                "role": "assistant",
+                "content": null,
+                "function_call": {
+                    "name": "get_failing_tests_covered_methods_for_class",
+                    "arguments": "{\"class_name\":\"luigi.scheduler.CentralPlannerScheduler\"}"
+                }
+            },
+            "m8": {
+                "role": "function",
+                "name": "get_failing_tests_covered_methods_for_class",
+                "content": "[\".__init__\", \".dump\", \".prune\", \".update\", \"._update_priority\", \".add_task\", \".add_worker\", \".update_resources\", \"._has_resources\", \"._used_resources\", \"._rank\", \".not_done\", \"._schedulable\", \".get_work\", \".ping\", \"._upstream_status\", \"._serialize_task\", \".graph\", \"._recurse_deps\", \".dep_graph\", \".task_list\", \".worker_list\", \".inverse_dep_graph\", \"._traverse_inverse_deps\", \".task_search\", \".re_enable_task\", \".fetch_error\", \"._update_task_history\"]"
+            },
+            "m9": {
+                "role": "assistant",
+                "content": null,
+                "function_call": {
+                    "name": "get_code_snippet",
+                    "arguments": "{\"signature\":\"luigi.scheduler.CentralPlannerScheduler.__init__\"}"
+                }
+            },
+            "m10": {
+                "role": "function",
+                "name": "get_code_snippet",
+                "content": "\"501 :     def __init__(self, config=None, resources=None, task_history_impl=None, **kwargs):\\n502 :         \\\"\\\"\\\"\\n503 :         Keyword Arguments:\\n504 :         :param config: an object of class \\\"scheduler\\\" or None (in which the global instance will be used)\\n505 :         :param resources: a dict of str->int constraints\\n506 :         :param task_history_override: ignore config and use this object as the task history\\n507 :         \\\"\\\"\\\"\\n508 :         self._config = config or scheduler(**kwargs)\\n509 :         self._state = SimpleTaskState(self._config.state_path)\\n510 : \\n511 :         if task_history_impl:\\n512 :             self._task_history = task_history_impl\\n513 :         elif self._config.record_task_history:\\n514 :             from luigi import db_task_history  # Needs sqlalchemy, thus imported here\\n515 :             self._task_history = db_task_history.DbTaskHistory()\\n516 :         else:\\n517 :             self._task_history = history.NopHistory()\\n518 :         self._resources = resources or configuration.get_config().getintdict('resources')  # TODO: Can we make this a Parameter?\\n519 :         self._make_task = functools.partial(\\n520 :             Task, disable_failures=self._config.disable_failures,\\n521 :             disable_hard_timeout=self._config.disable_hard_timeout,\\n522 :             disable_window=self._config.disable_window)\""
+            },
+            "m11": {
+                "role": "assistant",
+                "content": null,
+                "function_call": {
+                    "name": "get_code_snippet",
+                    "arguments": "{\"signature\":\"luigi.scheduler.CentralPlannerScheduler.prune\"}"
+                }
+            },
+            "m12": {
+                "role": "function",
+                "name": "get_code_snippet",
+                "content": "\"530 :     def prune(self):\\n531 :         logger.info(\\\"Starting pruning of task graph\\\")\\n532 :         remove_workers = []\\n533 :         for worker in self._state.get_active_workers():\\n534 :             if worker.prune(self._config):\\n535 :                 logger.info(\\\"Worker %s timed out (no contact for >=%ss)\\\", worker, self._config.worker_disconnect_delay)\\n536 :                 remove_workers.append(worker.id)\\n537 : \\n538 :         self._state.inactivate_workers(remove_workers)\\n539 : \\n540 :         assistant_ids = set(w.id for w in self._state.get_assistants())\\n541 :         remove_tasks = []\\n542 : \\n543 :         if assistant_ids:\\n544 :             necessary_tasks = self._state.get_necessary_tasks()\\n545 :         else:\\n546 :             necessary_tasks = ()\\n547 : \\n548 :         for task in self._state.get_active_tasks():\\n549 :             if task.id not in necessary_tasks and self._state.prune(task, self._config, assistant_ids):\\n550 :                 remove_tasks.append(task.id)\\n551 : \\n552 :         self._state.inactivate_tasks(remove_tasks)\\n553 : \\n554 :         logger.info(\\\"Done pruning task graph\\\")\""
+            },
+            "m13": {
+                "role": "assistant",
+                "content": null,
+                "function_call": {
+                    "name": "get_code_snippet",
+                    "arguments": "{\"signature\":\"luigi.scheduler.CentralPlannerScheduler.get_work\"}"
+                }
+            },
+            "m14": {
+                "role": "function",
+                "name": "get_code_snippet",
+                "content": "\"699 :     def get_work(self, host=None, assistant=False, **kwargs):\\n700 :         # TODO: remove any expired nodes\\n701 : \\n702 :         # Algo: iterate over all nodes, find the highest priority node no dependencies and available\\n703 :         # resources.\\n704 : \\n705 :         # Resource checking looks both at currently available resources and at which resources would\\n706 :         # be available if all running tasks died and we rescheduled all workers greedily. We do both\\n707 :         # checks in order to prevent a worker with many low-priority tasks from starving other\\n708 :         # workers with higher priority tasks that share the same resources.\\n709 : \\n710 :         # TODO: remove tasks that can't be done, figure out if the worker has absolutely\\n711 :         # nothing it can wait for\\n712 : \\n713 :         worker_id = kwargs['worker']\\n714 :         # Return remaining tasks that have no FAILED descendents\\n715 :         self.update(worker_id, {'host': host})\\n716 :         if assistant:\\n717 :             self.add_worker(worker_id, [('assistant', assistant)])\\n718 :         best_task = None\\n719 :         locally_pending_tasks = 0\\n720 :         running_tasks = []\\n721 :         upstream_table = {}\\n722 : \\n723 :         greedy_resources = collections.defaultdict(int)\\n724 :         n_unique_pending = 0\\n725 : \\n726 :         worker = self._state.get_worker(worker_id)\\n727 :         if worker.is_trivial_worker(self._state):\\n728 :             relevant_tasks = worker.get_pending_tasks(self._state)\\n729 :             used_resources = collections.defaultdict(int)\\n730 :             greedy_workers = dict()  # If there's no resources, then they can grab any task\\n731 :         else:\\n732 :             relevant_tasks = self._state.get_pending_tasks()\\n733 :             used_resources = self._used_resources()\\n734 :             greedy_workers = dict((worker.id, worker.info.get('workers', 1))\\n735 :                                   for worker in self._state.get_active_workers())\\n736 :         tasks = list(relevant_tasks)\\n737 :         tasks.sort(key=self._rank(among_tasks=tasks), reverse=True)\\n738 : \\n739 :         for task in tasks:\\n740 :             upstream_status = self._upstream_status(task.id, upstream_table)\\n741 :             in_workers = (assistant and task.workers) or worker_id in task.workers\\n742 :             if task.status == RUNNING and in_workers:\\n743 :                 # Return a list of currently running tasks to the client,\\n744 :                 # makes it easier to troubleshoot\\n745 :                 other_worker = self._state.get_worker(task.worker_running)\\n746 :                 more_info = {'task_id': task.id, 'worker': str(other_worker)}\\n747 :                 if other_worker is not None:\\n748 :                     more_info.update(other_worker.info)\\n749 :                     running_tasks.append(more_info)\\n750 : \\n751 :             if task.status == PENDING and in_workers and upstream_status != UPSTREAM_DISABLED:\\n752 :                 locally_pending_tasks += 1\\n753 :                 if len(task.workers) == 1 and not assistant:\\n754 :                     n_unique_pending += 1\\n755 : \\n756 :             if task.status == RUNNING and (task.worker_running in greedy_workers):\\n757 :                 greedy_workers[task.worker_running] -= 1\\n758 :                 for resource, amount in six.iteritems((task.resources or {})):\\n759 :                     greedy_resources[resource] += amount\\n760 : \\n761 :             if not best_task and self._schedulable(task) and self._has_resources(task.resources, greedy_resources):\\n762 :                 if in_workers and self._has_resources(task.resources, used_resources):\\n763 :                     best_task = task\\n764 :                 else:\\n765 :                     workers = itertools.chain(task.workers, [worker_id]) if assistant else task.workers\\n766 :                     for task_worker in workers:\\n767 :                         if greedy_workers.get(task_worker, 0) > 0:\\n768 :                             # use up a worker\\n769 :                             greedy_workers[task_worker] -= 1\\n770 : \\n771 :                             # keep track of the resources used in greedy scheduling\\n772 :                             for resource, amount in six.iteritems((task.resources or {})):\\n773 :                                 greedy_resources[resource] += amount\\n774 : \\n775 :                             break\\n776 : \\n777 :         reply = {'n_pending_tasks': locally_pending_tasks,\\n778 :                  'running_tasks': running_tasks,\\n779 :                  'task_id': None,\\n780 :                  'n_unique_pending': n_unique_pending}\\n781 : \\n782 :         if best_task:\\n783 :             self._state.set_status(best_task, RUNNING, self._config)\\n784 :             best_task.worker_running = worker_id\\n785 :             best_task.time_running = time.time()\\n786 :             self._update_task_history(best_task.id, RUNNING, host=host)\\n787 : \\n788 :             reply['task_id'] = best_task.id\\n789 :             reply['task_family'] = best_task.family\\n790 :             reply['task_module'] = getattr(best_task, 'module', None)\\n791 :             reply['task_params'] = best_task.params\\n792 : \\n793 :         return reply\""
+            },
+            "m15": {
+                "role": "assistant",
+                "content": "### Diagnosis:\n\nThe test `test.worker_external_task_test.WorkerExternalTaskTest.test_external_dependency_completes_later()` fails because of an `UnknownParameterException` due to an unrecognized parameter (`prune_on_get_work`) passed to the `CentralPlannerScheduler` constructor. \n\nThe `CentralPlannerScheduler` constructor (`__init__`) in `luigi/scheduler.py` accepts a `config` object that is expected to handle the keyword arguments. When the `config` is not provided, it initializes a default scheduler instance using the provided `kwargs`. However, the current implementation of the scheduler does not recognize the `prune_on_get_work` parameter, resulting in an exception.\n\nKey points in the code:\n- `CentralPlannerScheduler.__init__` (line 508) initializes the `_config` with `scheduler(**kwargs)`.\n- The scheduler initialized with the `kwargs` must have support for `prune_on_get_work` which is missing.\n\n### Affected methods:\nFixes should be considered in the following locations:\n\n- `luigi.scheduler.CentralPlannerScheduler.__init__(config=None, resources=None, task_history_impl=None, **kwargs)`\n- `luigi.scheduler.CentralPlannerScheduler.get_work(host=None, assistant=False, **kwargs)` (since `prune_on_get_work` might be relevant here based on context).\n  \n### Suggested Fix Locations:\n\nluigi.scheduler.CentralPlannerScheduler.__init__(config=None, resources=None, task_history_impl=None, **kwargs)\nluigi.scheduler.CentralPlannerScheduler.get_work(host=None, assistant=False, **kwargs)"
+            }
+        }
+    },
+    "buggy_methods": {
+        "luigi.scheduler.Worker.__init__(self, worker_id, last_active=None)": {
+            "is_found": false,
+            "matching_answer": []
+        },
+        "luigi.scheduler.CentralPlannerScheduler.get_work(self, host=None, assistant=False, **kwargs)": {
+            "is_found": true,
+            "matching_answer": [
+                "luigi.scheduler.CentralPlannerScheduler.get_work(host=None, assistant=False, **kwargs)"
+            ]
+        },
+        "luigi.interface.WorkerSchedulerFactory.create_local_scheduler(self)": {
+            "is_found": false,
+            "matching_answer": []
+        }
+    }
+}
