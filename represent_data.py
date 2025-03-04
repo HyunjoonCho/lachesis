@@ -8,8 +8,11 @@ import matplotlib.pyplot as plt
 import networkx as nx
 from torch_geometric.utils import from_networkx
 from collections import defaultdict
+import argparse
 
 D4J_BUG_INFO_DIR = './AutoFL/data/defects4j'
+MAX_NUM_OF_FUNCTIONS = 5
+MAX_NUM_OF_ARGS = 45
 
 class D4JProcessing():
     def __init__(self, bug_name) -> None:
@@ -167,13 +170,13 @@ class D4JProcessing():
             field_list = json.load(f)
         return field_list
 
-def d4j_get_reasoning_paths_and_args(bug_name, R=5):
+def d4j_get_reasoning_paths_and_args(bug_name, model, R=5):
     arg_set = set()
     reasoning_paths = []
     dp = D4JProcessing(bug_name)
 
     for i in range(1, R + 1):
-        result_file = f"./AutoFL/results/d4j_autofl_eol_{i}/llama3/XFL-{bug_name}.json"
+        result_file = f"./AutoFL/results/d4j_autofl_eol_{i}/{model}/XFL-{bug_name}.json"
         with open(result_file, 'r') as f:
             content = json.load(f)
             
@@ -208,7 +211,7 @@ def d4j_get_reasoning_paths_and_args(bug_name, R=5):
         reasoning_paths.append({"function_calls": function_calls, "answer": answer_signatures_dict})
     return reasoning_paths, arg_set
 
-def generate_LIM(reasoning_paths_dict, labels_dict, args_dict, N=11): # Why do I need 11, not 10? Considering step 0?
+def generate_LIM(reasoning_paths_dict, labels_dict, args_dict, N=12): # Why do I need 11, not 10? Considering step 0?
     dataset_F = []
     dataset_FA = []
     dataset_FAA = []
@@ -240,7 +243,7 @@ def generate_LIM(reasoning_paths_dict, labels_dict, args_dict, N=11): # Why do I
                     func_vector = torch.tensor([1, 0, 0, 0, 0], dtype=torch.float) # utilize as undefined function calls
                 arg = fc["arguments"]
                 
-                arg_vector = torch.zeros(28, dtype=torch.float)
+                arg_vector = torch.zeros(MAX_NUM_OF_ARGS, dtype=torch.float)
 
                 if arg:
                     arg_index = arg_list.index(arg)
@@ -258,17 +261,17 @@ def generate_LIM(reasoning_paths_dict, labels_dict, args_dict, N=11): # Why do I
 
             
             while len(F_path) < N:
-                F_path.append(torch.zeros(5, dtype=torch.float)) 
-                FA_path.append(torch.zeros(33, dtype=torch.float))
-                FAA_path.append(torch.zeros(33, dtype=torch.float))
+                F_path.append(torch.zeros(MAX_NUM_OF_FUNCTIONS, dtype=torch.float)) 
+                FA_path.append(torch.zeros(MAX_NUM_OF_FUNCTIONS + MAX_NUM_OF_ARGS, dtype=torch.float))
+                FAA_path.append(torch.zeros(MAX_NUM_OF_FUNCTIONS + MAX_NUM_OF_ARGS, dtype=torch.float))
             
-            answer_vector = torch.zeros(28, dtype=torch.float)
+            answer_vector = torch.zeros(MAX_NUM_OF_ARGS, dtype=torch.float)
             for answers in answer.values():
                 for a in answers:
                     answer_index = arg_list.index(a)
                     answer_vector[answer_index] = 1
             
-            func_answer_vector = torch.cat((torch.zeros(5, dtype=torch.float), answer_vector))
+            func_answer_vector = torch.cat((torch.zeros(MAX_NUM_OF_FUNCTIONS, dtype=torch.float), answer_vector))
             
             FAA_path.append(func_answer_vector)
 
@@ -357,7 +360,7 @@ def generate_LIG(reasoning_paths_dict, labels_dict, args_dict):
             
                 arg = node["arguments"]
 
-                arg_vector = torch.zeros(28, dtype=torch.float)
+                arg_vector = torch.zeros(MAX_NUM_OF_ARGS, dtype=torch.float)
 
                 if arg:
                     arg_index = arg_list.index(arg)
@@ -375,13 +378,12 @@ def generate_LIG(reasoning_paths_dict, labels_dict, args_dict):
 
             # Answer node
             else:
-                func_vector = torch.zeros(5, dtype=torch.float)
-                
-                answer_vector = torch.zeros(28, dtype=torch.float)
+                func_vector = torch.zeros(MAX_NUM_OF_FUNCTIONS, dtype=torch.float)
+                answer_vector = torch.zeros(MAX_NUM_OF_ARGS, dtype=torch.float)
                 answer_index = arg_list.index(node)
                 answer_vector[answer_index] = 1
 
-                func_answer_vector = torch.cat((torch.zeros(5, dtype=torch.float), answer_vector))
+                func_answer_vector = torch.cat((torch.zeros(MAX_NUM_OF_FUNCTIONS, dtype=torch.float), answer_vector))
 
                 F_nodes_x.append(func_vector)
                 FA_nodes_x.append(func_arg_vector)
@@ -414,8 +416,12 @@ def generate_LIG(reasoning_paths_dict, labels_dict, args_dict):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--model', '-m', default='llama3')
+    args = parser.parse_args()
+
     d4j_bugs = os.listdir('./AutoFL/data/defects4j')
-    d4j_combined_results_file = './AutoFL/combined_fl_results/d4j_eol_llama3_R5.json'
+    d4j_combined_results_file = f'./AutoFL/combined_fl_results/d4j_eol_{args.model}_R5.json'
     with open(d4j_combined_results_file, 'r') as f:
         d4j_combined_result = json.load(f)
 
@@ -430,7 +436,7 @@ if __name__ == '__main__':
     for bug_name in tqdm(d4j_bugs):
         buggy_methods = d4j_combined_result["buggy_methods"][bug_name]
         if len(buggy_methods) == 1:
-            reasoning_paths, arg_set = d4j_get_reasoning_paths_and_args(bug_name)
+            reasoning_paths, arg_set = d4j_get_reasoning_paths_and_args(bug_name, args.model)
             reasoning_paths_dict[bug_name] = reasoning_paths
             args_dict[bug_name] = arg_set
 
@@ -455,16 +461,16 @@ if __name__ == '__main__':
         "dataset_FA": lstm_FA,
         "dataset_FAA": lstm_FAA,
         "y": lstm_y
-    }, "./data/lstm_dataset.pth")
-    print("LSTM datasets saved lstm_dataset.pth")
+    }, f"./data/lstm_dataset_{args.model}.pth")
+    print(f"LSTM datasets saved lstm_dataset_{args.model}.pth")
 
     torch.save({
         "dataset_S": gcn_S,
         "dataset_F": gcn_F,
         "dataset_FA": gcn_FA,
         "dataset_FAA": gcn_FAA,
-    }, "data/gcn_dataset.pt")
-    print("GCN datasets saved to gcn_dataset.pt")
+    }, f"data/gcn_dataset_{args.model}.pt")
+    print(f"GCN datasets saved to gcn_dataset_{args.model}.pt")
 
     all_bugs = list(args_dict.keys())
 
