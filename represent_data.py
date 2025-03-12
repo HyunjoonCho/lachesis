@@ -10,12 +10,12 @@ from torch_geometric.utils import from_networkx
 from collections import defaultdict
 import argparse
 
-D4J_BUG_INFO_DIR = './AutoFL/data/defects4j'
 MAX_NUM_OF_FUNCTIONS = 5
 MAX_NUM_OF_ARGS = 45
 
 class D4JProcessing():
-    def __init__(self, bug_name) -> None:
+    def __init__(self, bug_name, d4j_dir) -> None:
+        self._d4j_info_dir = d4j_dir
         self._method_lists = self._load_method_lists(bug_name)
         self._test_lists = self._load_test_lists(bug_name)
         self._field_lists = self._load_field_lists(bug_name)
@@ -80,6 +80,12 @@ class D4JProcessing():
             matching_methods_signatures = {}
 
         return matching_methods_signatures
+
+    def is_buggy(self, candidate):
+        for method in self._method_lists:
+            if method['signature'] == candidate:
+                return method['is_bug']
+        return False
 
     def get_matching_method_or_candidates(self, pred_expr: str, num_max_candidates:int=None) -> tuple:
         candidates = {}
@@ -156,24 +162,24 @@ class D4JProcessing():
         return highest_priority, candidates
     
     def _load_method_lists(self, bug_name):
-        with open(os.path.join(D4J_BUG_INFO_DIR, bug_name, "snippet.json")) as f:
+        with open(os.path.join(self._d4j_info_dir, bug_name, "snippet.json")) as f:
             method_list = json.load(f)
         return method_list
     
     def _load_test_lists(self, bug_name):
-        with open(os.path.join(D4J_BUG_INFO_DIR, bug_name, "test_snippet.json")) as f:
+        with open(os.path.join(self._d4j_info_dir, bug_name, "test_snippet.json")) as f:
             test_list = json.load(f)
         return test_list
     
     def _load_field_lists(self, bug_name):
-        with open(os.path.join(D4J_BUG_INFO_DIR, bug_name, "field_snippet.json")) as f:
+        with open(os.path.join(self._d4j_info_dir, bug_name, "field_snippet.json")) as f:
             field_list = json.load(f)
         return field_list
 
 def d4j_get_reasoning_paths_and_args(bug_name, model, R=5):
     arg_set = set()
     reasoning_paths = []
-    dp = D4JProcessing(bug_name)
+    dp = D4JProcessing(bug_name, './AutoFL/data/defects4j')
 
     for i in range(1, R + 1):
         result_file = f"./AutoFL/results/d4j_autofl_eol_{i}/{model}/XFL-{bug_name}.json"
