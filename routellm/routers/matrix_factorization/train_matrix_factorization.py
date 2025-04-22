@@ -231,7 +231,7 @@ if __name__ == "__main__":
     train_data_loader = PairwiseDataset(train_data).get_dataloaders(
         batch_size=batch_size, shuffle=True
     )
-    test_data_loader = PairwiseDataset(test_data).get_dataloaders(1024, shuffle=False)
+    test_data_loader = PairwiseDataset(test_data).get_dataloaders(8, shuffle=False)
 
     model = MFModel_Train(
         dim=dim,
