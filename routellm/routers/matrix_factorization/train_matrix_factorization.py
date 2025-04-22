@@ -9,7 +9,7 @@ from torch.optim import Adam
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
-from routellm.routers.matrix_factorization.model import MODEL_IDS
+from model import MODEL_IDS
 
 torch.manual_seed(42)
 np.random.seed(42)
@@ -47,7 +47,7 @@ class MFModel_Train(torch.nn.Module):
         dim,
         num_models,
         num_prompts,
-        text_dim=1536,
+        text_dim=768,
         num_classes=1,
         use_proj=True,
         npy_path=None,
@@ -201,8 +201,8 @@ def train_loops(
 
 if __name__ == "__main__":
     # an example of training the model
-    json_path = "/path/to/pairwise_data.json"
-    npy_path = "/path/to/prompt/embedding.npy"
+    json_path = "../../route_data/vs.json"
+    npy_path = "../../route_data/embeddings.npy"
 
     dim = 128
     batch_size = 64

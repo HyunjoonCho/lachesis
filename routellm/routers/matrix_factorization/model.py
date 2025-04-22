@@ -1,7 +1,7 @@
 import torch
 from huggingface_hub import PyTorchModelHubMixin
 
-from routellm.routers.similarity_weighted.utils import OPENAI_CLIENT
+from utils import OPENAI_CLIENT
 
 MODEL_IDS = {
     "RWKV-4-Raven-14B": 0,
@@ -68,6 +68,8 @@ MODEL_IDS = {
     "yi-34b-chat": 61,
     "zephyr-7b-alpha": 62,
     "zephyr-7b-beta": 63,
+    "gpt-4o": 64,
+    "llama3-8b": 65,
 }
 
 
