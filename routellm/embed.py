@@ -1,5 +1,5 @@
 import json
-from request_wrapper import get_embeddings
+from routers.matrix_factorization.request_wrapper import get_embeddings
 
 results_path = '../AutoFL/results/d4j_autofl_eol_1/llama3'
 initial_prompts_path = 'route_data/initial_prompts.json'

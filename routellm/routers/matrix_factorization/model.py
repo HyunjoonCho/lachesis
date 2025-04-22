@@ -1,6 +1,6 @@
 import torch
 from huggingface_hub import PyTorchModelHubMixin
-from ... import request_wrapper
+from request_wrapper import get_embeddings
 
 MODEL_IDS = {
     "RWKV-4-Raven-14B": 0,
@@ -111,7 +111,7 @@ class MFModel(torch.nn.Module, PyTorchModelHubMixin):
         model_embed = torch.nn.functional.normalize(model_embed, p=2, dim=1)
 
         prompt_embed = (
-            request_wrapper.get_embeddings(prompt)
+            get_embeddings(prompt)
         )
         prompt_embed = torch.tensor(prompt_embed, device=self.get_device())
         prompt_embed = self.text_proj(prompt_embed)
