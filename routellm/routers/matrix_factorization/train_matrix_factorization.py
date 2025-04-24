@@ -2,6 +2,7 @@ import json
 import random
 
 import numpy as np
+from sklearn.model_selection import KFold
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -207,12 +208,13 @@ if __name__ == "__main__":
     npy_path = "../../route_data/embeddings.npy"
 
     dim = 128
-    batch_size = 64
-    num_epochs = 100
+    batch_size = 16
+    num_epochs = 30
     alpha = 0.1
     use_proj = True
     lr = 3e-4
     weight_decay = 1e-5
+    k = 5
 
     # load and filter data
     data = json.load(open(json_path, "r"))
@@ -224,32 +226,36 @@ if __name__ == "__main__":
         and sample["model_a"] != sample["model_b"]
     ]
 
-    # shuffle and prepare train test split
-    data_shuffled = filtered_data.copy()
-    random.shuffle(data_shuffled)
-    train_data = data_shuffled[: int(len(data_shuffled) * 0.95)]
-    test_data = data_shuffled[int(len(data_shuffled) * 0.95) :]
+    random.shuffle(filtered_data)
+    kf = KFold(n_splits=k, shuffle=True, random_state=42)
 
-    train_data_loader = PairwiseDataset(train_data).get_dataloaders(
-        batch_size=batch_size, shuffle=True
-    )
-    test_data_loader = PairwiseDataset(test_data).get_dataloaders(8, shuffle=False)
+    for fold, (train_idx, test_idx) in enumerate(kf.split(filtered_data)):
+        print(f"\nFold {fold + 1}/{k}")
 
-    model = MFModel_Train(
-        dim=dim,
-        num_models=len(MODEL_IDS),
-        num_prompts=len(data),
-        use_proj=use_proj,
-        npy_path=npy_path,
-    ).to("cuda")
+        train_data = [filtered_data[i] for i in train_idx]
+        test_data = [filtered_data[i] for i in test_idx]
 
-    train_loops(
-        model,
-        train_data_loader,
-        test_data_loader,
-        lr=lr,
-        weight_decay=weight_decay,
-        alpha=alpha,
-        num_epochs=num_epochs,
-        device="cuda",
-    )
+        train_loader = PairwiseDataset(train_data).get_dataloaders(
+            batch_size=batch_size, shuffle=True
+        )
+        test_loader = PairwiseDataset(test_data).get_dataloaders(8, shuffle=False)
+
+        model = MFModel_Train(
+            dim=dim,
+            num_models=len(MODEL_IDS),
+            num_prompts=len(data),
+            use_proj=use_proj,
+            npy_path=npy_path,
+        ).to("cuda")
+
+        train_loops(
+            model,
+            train_loader,
+            test_loader,
+            lr=lr,
+            weight_decay=weight_decay,
+            alpha=alpha,
+            num_epochs=num_epochs,
+            device="cuda",
+            save_path=f"cv/best_{fold + 1}.pt",  # assumes train_loops saves model to this path
+        )
