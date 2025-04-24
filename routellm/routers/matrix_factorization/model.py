@@ -86,7 +86,7 @@ class MFModel(torch.nn.Module, PyTorchModelHubMixin):
         self.use_proj = use_proj
         self.P = torch.nn.Embedding(num_models, dim)
 
-        self.embedding_model = "text-embedding-3-small"
+        self.embedding_model = "nomic-embed-text"
 
         if self.use_proj:
             self.text_proj = torch.nn.Sequential(
@@ -125,4 +125,22 @@ class MFModel(torch.nn.Module, PyTorchModelHubMixin):
         return winrate
 
     def load(self, path):
-        self.load_state_dict(torch.load(path))
+        raw_sd = torch.load(path, map_location=self.get_device())
+        new_sd = {}
+        for k, v in raw_sd.items():
+            if k.startswith("Q."):
+                continue
+
+            if k == "text_proj.weight":
+                new_sd["text_proj.0.weight"] = v
+                continue
+            if k == "classifier.weight":
+                new_sd["classifier.0.weight"] = v
+                continue
+
+            new_sd[k] = v
+
+        missing, unexpected = self.load_state_dict(new_sd, strict=False)
+
+        # print(f"  Loaded {len(new_sd)} params, "
+        #       f"missing_keys={missing}, unexpected_keys={unexpected}")
