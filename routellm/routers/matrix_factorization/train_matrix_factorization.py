@@ -138,6 +138,7 @@ def train_loops(
     alpha,
     num_epochs,
     device="cuda",
+    save_path="best_checkpoint.pt",
     evaluator=evaluator,
     **kwargs,
 ):
@@ -193,8 +194,7 @@ def train_loops(
 
         if test_acc > best_test_acc:
             best_test_acc = test_acc
-            checkpoint_path = "best_checkpoint.pt"
-            torch.save(net.state_dict(), checkpoint_path)
+            torch.save(net.state_dict(), save_path)
 
         progress_bar.set_postfix(**info)
         progress_bar.update(1)

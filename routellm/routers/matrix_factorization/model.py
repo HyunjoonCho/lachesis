@@ -1,6 +1,6 @@
 import torch
 from huggingface_hub import PyTorchModelHubMixin
-from .request_wrapper import get_embeddings
+from request_wrapper import get_embeddings
 
 MODEL_IDS = {
     "RWKV-4-Raven-14B": 0,
