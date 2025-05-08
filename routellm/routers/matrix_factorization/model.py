@@ -69,6 +69,9 @@ MODEL_IDS = {
     "zephyr-7b-beta": 63,
     "gpt-4o": 64,
     "llama3-8b": 65,
+    "llama3.1-8b": 66,
+    "mistral-nemo-12b": 67,
+    "qwen2.5coder-7b": 68,
 }
 
 
