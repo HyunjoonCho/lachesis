@@ -36,7 +36,7 @@ class MatrixFactorizationRouter(Router):
         strong_model="gpt-4-1106-preview",
         weak_model="mixtral-8x7b-instruct-v0.1",
         hidden_size=128,
-        num_models=66,
+        num_models=69,
         text_dim=768,
         num_classes=1,
         use_proj=True,

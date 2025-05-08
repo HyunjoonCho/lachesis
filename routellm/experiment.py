@@ -1,6 +1,5 @@
 from routers.routers import MatrixFactorizationRouter
 import json
-import tqdm
 import torch
 import numpy as np
 import random
@@ -14,6 +13,7 @@ random.seed(42)
 checkpoint_dir = 'routers/matrix_factorization/cv'
 probs_dir = 'results/cv'
 prompt_path = 'route_data/initial_prompts.json'
+combined_result_path = '../AutoFL/combined_fl_results/d4j_eol_llama3_R5.json'
 
 if __name__ == "__main__":
     strong_model_name = 'llama3.1-8b'
@@ -43,6 +43,9 @@ if __name__ == "__main__":
     with open(prompt_path) as f:
         prompts = json.load(f)
 
+    with open(combined_result_path) as f:
+        combined_bug_indices = list(json.load(f)['buggy_methods'].keys())
+
     random.shuffle(filtered_data)
     kf = KFold(n_splits=k, shuffle=True, random_state=42)
 
@@ -65,9 +68,6 @@ if __name__ == "__main__":
         val_loader = PairwiseDataset(val_data).get_dataloaders(
             batch_size=8, shuffle=False
         )
-        test_loader = PairwiseDataset(test_data).get_dataloaders(
-            batch_size=8, shuffle=False
-        )
 
         model = MFModel_Train(
             dim=dim,
@@ -77,8 +77,7 @@ if __name__ == "__main__":
             npy_path=npy_path,
         ).to("cuda")
         
-        save_path = f"{checkpoint_dir}/{strong_model_name}_{weak_model_name}_best_{fold + 1}.pt",
-
+        save_path = f"{checkpoint_dir}/{strong_model_name}_{weak_model_name}_best_{fold + 1}.pt"
         train_loops(
             model,
             train_loader,
@@ -97,10 +96,11 @@ if __name__ == "__main__":
             weak_model=weak_model_name
         )
         
+        test_bug_ids = [combined_bug_indices[i] for i in test_idx]
         win_rates = dict()
-        for bug_id in tqdm.tqdm(test_data):
+        for bug_id in test_bug_ids:
             prompt = prompts[bug_id]
             win_rates[bug_id] = router.calculate_strong_win_rate(prompt)
         
-        with open(f'{probs_dir}/fold_{fold + 1}.json', 'w') as f:
+        with open(f'{probs_dir}/{strong_model_name}_{weak_model_name}_fold_{fold + 1}.json', 'w') as f:
             json.dump(win_rates, f)

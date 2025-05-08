@@ -10,7 +10,7 @@ from torch.optim import Adam
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
-from model import MODEL_IDS
+from .model import MODEL_IDS
 
 torch.manual_seed(42)
 np.random.seed(42)
