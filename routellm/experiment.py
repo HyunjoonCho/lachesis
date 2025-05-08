@@ -1,6 +1,7 @@
 from routers.routers import MatrixFactorizationRouter
 import json
 import torch
+import os
 import numpy as np
 import random
 from sklearn.model_selection import KFold
@@ -77,7 +78,8 @@ if __name__ == "__main__":
             npy_path=npy_path,
         ).to("cuda")
         
-        save_path = f"{checkpoint_dir}/{strong_model_name}_{weak_model_name}_best_{fold + 1}.pt"
+        os.makedirs(f"{checkpoint_dir}/{strong_model_name}_{weak_model_name}") 
+        save_path = f"{checkpoint_dir}/{strong_model_name}_{weak_model_name}/best_{fold + 1}.pt"
         train_loops(
             model,
             train_loader,
@@ -101,6 +103,7 @@ if __name__ == "__main__":
         for bug_id in test_bug_ids:
             prompt = prompts[bug_id]
             win_rates[bug_id] = router.calculate_strong_win_rate(prompt)
-        
-        with open(f'{probs_dir}/{strong_model_name}_{weak_model_name}_fold_{fold + 1}.json', 'w') as f:
+
+        os.makedirs(f'{probs_dir}/{strong_model_name}_{weak_model_name}')
+        with open(f'{probs_dir}/{strong_model_name}_{weak_model_name}/fold_{fold + 1}.json', 'w') as f:
             json.dump(win_rates, f)
