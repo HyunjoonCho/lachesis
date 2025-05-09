@@ -17,7 +17,7 @@ prompt_path = 'route_data/initial_prompts.json'
 combined_result_path = '../AutoFL/combined_fl_results/d4j_eol_llama3_R5.json'
 
 if __name__ == "__main__":
-    strong_model_name = 'llama3.1-8b'
+    strong_model_name = 'mistral-nemo-12b'
     weak_model_name = 'llama3-8b'
 
     json_path = f'route_data/{strong_model_name}_vs_{weak_model_name}.json'
