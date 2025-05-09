@@ -17,7 +17,7 @@ prompt_path = 'route_data/initial_prompts.json'
 combined_result_path = '../AutoFL/combined_fl_results/d4j_eol_llama3_R5.json'
 
 if __name__ == "__main__":
-    strong_model_name = 'mistral-nemo-12b'
+    strong_model_name = 'qwen2.5coder-7b'
     weak_model_name = 'llama3-8b'
 
     json_path = f'route_data/{strong_model_name}_vs_{weak_model_name}.json'
@@ -78,7 +78,7 @@ if __name__ == "__main__":
             npy_path=npy_path,
         ).to("cuda")
         
-        os.makedirs(f"{checkpoint_dir}/{strong_model_name}_{weak_model_name}") 
+        os.makedirs(f"{checkpoint_dir}/{strong_model_name}_{weak_model_name}", exist_ok=True) 
         save_path = f"{checkpoint_dir}/{strong_model_name}_{weak_model_name}/best_{fold + 1}.pt"
         train_loops(
             model,
@@ -104,6 +104,6 @@ if __name__ == "__main__":
             prompt = prompts[bug_id]
             win_rates[bug_id] = router.calculate_strong_win_rate(prompt)
 
-        os.makedirs(f'{probs_dir}/{strong_model_name}_{weak_model_name}')
+        os.makedirs(f'{probs_dir}/{strong_model_name}_{weak_model_name}', exist_ok=True)
         with open(f'{probs_dir}/{strong_model_name}_{weak_model_name}/fold_{fold + 1}.json', 'w') as f:
             json.dump(win_rates, f)
