@@ -14,10 +14,10 @@ torch.manual_seed(42)
 np.random.seed(42)
 random.seed(42)
 
-checkpoint_dir = 'routers/matrix_factorization/cv'
-probs_dir = 'results/cv'
-prompt_path = 'route_data/initial_prompts.json'
-embeddings_path = 'route_data/embeddings.json'
+checkpoint_dir = 'routers/matrix_factorization/trimmed_cv'
+probs_dir = 'results/trimmed_cv'
+prompt_path = 'route_data/trimmed_prompts.json'
+embeddings_path = 'route_data/trimmed_embeddings.json'
 combined_fl_dir = '../AutoFL/combined_fl_results/' 
 
 def extract_min_ranks(result, bug_list):
