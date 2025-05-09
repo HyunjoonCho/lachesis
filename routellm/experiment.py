@@ -14,11 +14,11 @@ random.seed(42)
 checkpoint_dir = 'routers/matrix_factorization/cv'
 probs_dir = 'results/cv'
 prompt_path = 'route_data/initial_prompts.json'
-combined_result_path = '../AutoFL/combined_fl_results/d4j_gpt4o_results_R10_full.json'
+combined_result_path = '../AutoFL/combined_fl_results/d4j_eol_mistral-nemo_R5.json'
 
 if __name__ == "__main__":
-    strong_model_name = 'gpt-4o'
-    weak_model_name = 'llama3-8b'
+    strong_model_name = 'mistral-nemo-12b'
+    weak_model_name = 'qwen2.5coder-7b'
 
     json_path = f'route_data/{strong_model_name}_vs_{weak_model_name}.json'
     npy_path = f'route_data/{strong_model_name}_{weak_model_name}_embeddings.npy'
