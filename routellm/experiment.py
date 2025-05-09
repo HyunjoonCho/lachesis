@@ -17,7 +17,7 @@ prompt_path = 'route_data/initial_prompts.json'
 combined_result_path = '../AutoFL/combined_fl_results/d4j_gpt4o_results_R10_full.json'
 
 if __name__ == "__main__":
-    strong_model_name = 'qwen2.5coder-7b'
+    strong_model_name = 'gpt-4o'
     weak_model_name = 'llama3-8b'
 
     json_path = f'route_data/{strong_model_name}_vs_{weak_model_name}.json'
