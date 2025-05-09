@@ -1,11 +1,14 @@
-from routers.routers import MatrixFactorizationRouter
+import argparse
 import json
-import torch
 import os
-import numpy as np
 import random
-from sklearn.model_selection import KFold
+
+from routers.routers import MatrixFactorizationRouter
 from routers.matrix_factorization.train_matrix_factorization import *
+
+import torch
+import numpy as np
+from sklearn.model_selection import KFold
 
 torch.manual_seed(42)
 np.random.seed(42)
@@ -14,14 +17,79 @@ random.seed(42)
 checkpoint_dir = 'routers/matrix_factorization/cv'
 probs_dir = 'results/cv'
 prompt_path = 'route_data/initial_prompts.json'
-combined_result_path = '../AutoFL/combined_fl_results/d4j_eol_mistral-nemo_R5.json'
+embeddings_path = 'route_data/embeddings.json'
+combined_fl_dir = '../AutoFL/combined_fl_results/' 
+
+def extract_min_ranks(result, bug_list):
+    min_ranks = list() 
+    for bug_id in bug_list:
+        buggy_methods = result[bug_id]
+        min_ranks.append(0 if not buggy_methods else min(map(lambda x: x['autofl_rank'], buggy_methods.values())))
+    
+    return min_ranks
+ 
+def build_and_store_data(strong_model, strong_result, weak_model, weak_result):
+    sorted_bug_list = sorted(strong_result.keys())
+
+    strong_ranks = extract_min_ranks(strong_result, sorted_bug_list)
+    weak_ranks = extract_min_ranks(weak_result, sorted_bug_list)
+    vs_result = list(map(lambda x: x[0] < x[1], zip(strong_ranks, weak_ranks)))
+    vs_data = list()
+
+    for i, _ in enumerate(sorted_bug_list):
+        vs_data.append({
+            "model_a": strong_model,
+            "model_b": weak_model,
+            "idx": i,
+            "winner": "model_a" if vs_result[i] else "model_b"
+        })
+
+    with open(vs_data_path, 'w') as f:
+        json.dump(vs_data, f, indent=4)
+
+    with open(embeddings_path) as f:
+        embeddings = json.load(f)
+    filtered_embeddings = np.array([embeddings[bug_id] for bug_id in sorted_bug_list])
+    np.save(filtered_embeddings_path, filtered_embeddings)
+
+def split_and_get_loaders_for(training_data):
+    train_size = int(0.75 * len(training_data))       
+    train_data = training_data[:train_size]
+    val_data = training_data[train_size:]
+    
+    train_loader = PairwiseDataset(train_data).get_dataloaders(
+        batch_size=batch_size, shuffle=True
+    )
+    val_loader = PairwiseDataset(val_data).get_dataloaders(
+        batch_size=8, shuffle=False
+    )
+    
+    return train_loader, val_loader
 
 if __name__ == "__main__":
-    strong_model_name = 'mistral-nemo-12b'
-    weak_model_name = 'qwen2.5coder-7b'
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--strong', '-s', default='gpt-4o')
+    parser.add_argument('--weak', '-w', default='llama3-8b')
+    parser.add_argument('--strong_result', default='d4j_gpt4o_results_R10_full.json')
+    parser.add_argument('--weak_result', default='d4j_eol_llama3_R10.json')
+    args = parser.parse_args()
+ 
+    strong_model = args.strong
+    weak_model = args.weak
+    strong_result_path = os.path.join(combined_fl_dir, args.strong_result)
+    weak_result_path = os.path.join(combined_fl_dir, args.weak_result)
 
-    json_path = f'route_data/{strong_model_name}_vs_{weak_model_name}.json'
-    npy_path = f'route_data/{strong_model_name}_{weak_model_name}_embeddings.npy'
+    os.makedirs('route_data/pairwise', exist_ok=True)
+    vs_data_path = f'route_data/pairwise/{strong_model}_vs_{weak_model}.json'
+    filtered_embeddings_path = f'route_data/pairwise/{strong_model}_{weak_model}_embeddings.npy'
+
+    with open(strong_result_path) as f:
+        strong_result = json.load(f)['buggy_methods']
+
+    with open(weak_result_path) as f:
+        weak_result = json.load(f)['buggy_methods']
+
+    build_and_store_data(strong_model, strong_result, weak_model, weak_result)
 
     dim = 128
     batch_size = 16
@@ -32,7 +100,7 @@ if __name__ == "__main__":
     weight_decay = 1e-5
     k = 5
 
-    data = json.load(open(json_path, "r"))
+    data = json.load(open(vs_data_path, "r"))
 
     filtered_data = [
         sample
@@ -44,8 +112,8 @@ if __name__ == "__main__":
     with open(prompt_path) as f:
         prompts = json.load(f)
 
-    with open(combined_result_path) as f:
-        combined_bug_indices = list(json.load(f)['buggy_methods'].keys())
+    with open(strong_result_path) as f:
+        combined_bug_indices = list(json.load(f)['buggy_methods'].keys()) # TODO: weak models may have smaller number of results
 
     random.shuffle(filtered_data)
     kf = KFold(n_splits=k, shuffle=True, random_state=42)
@@ -53,33 +121,19 @@ if __name__ == "__main__":
     for fold, (train_idx, test_idx) in enumerate(kf.split(filtered_data)):
         print(f"\nFold {fold + 1}/{k}")
 
-        all_train_data = [filtered_data[i] for i in train_idx]
-        test_data = [filtered_data[i] for i in test_idx]
-
-        train_size = int(0.75 * len(all_train_data))
+        training_data = [filtered_data[i] for i in train_idx]
+        train_loader, val_loader = split_and_get_loaders_for(training_data)
         
-        train_data = all_train_data[:train_size]
-        val_data = all_train_data[train_size:]
-        
-        print(f"Train size: {len(train_data)}, Validation size: {len(val_data)}, Test size: {len(test_data)}")
-
-        train_loader = PairwiseDataset(train_data).get_dataloaders(
-            batch_size=batch_size, shuffle=True
-        )
-        val_loader = PairwiseDataset(val_data).get_dataloaders(
-            batch_size=8, shuffle=False
-        )
-
         model = MFModel_Train(
             dim=dim,
             num_models=len(MODEL_IDS),
             num_prompts=len(data),
             use_proj=use_proj,
-            npy_path=npy_path,
+            npy_path=filtered_embeddings_path,
         ).to("cuda")
         
-        os.makedirs(f"{checkpoint_dir}/{strong_model_name}_{weak_model_name}", exist_ok=True) 
-        save_path = f"{checkpoint_dir}/{strong_model_name}_{weak_model_name}/best_{fold + 1}.pt"
+        os.makedirs(f"{checkpoint_dir}/{strong_model}_{weak_model}", exist_ok=True) 
+        save_path = f"{checkpoint_dir}/{strong_model}_{weak_model}/best_{fold + 1}.pt"
         train_loops(
             model,
             train_loader,
@@ -94,8 +148,8 @@ if __name__ == "__main__":
 
         router = MatrixFactorizationRouter(
             save_path, 
-            strong_model=strong_model_name, 
-            weak_model=weak_model_name
+            strong_model=strong_model, 
+            weak_model=weak_model
         )
         
         test_bug_ids = [combined_bug_indices[i] for i in test_idx]
@@ -104,6 +158,6 @@ if __name__ == "__main__":
             prompt = prompts[bug_id]
             win_rates[bug_id] = router.calculate_strong_win_rate(prompt)
 
-        os.makedirs(f'{probs_dir}/{strong_model_name}_{weak_model_name}', exist_ok=True)
-        with open(f'{probs_dir}/{strong_model_name}_{weak_model_name}/fold_{fold + 1}.json', 'w') as f:
+        os.makedirs(f'{probs_dir}/{strong_model}_{weak_model}', exist_ok=True)
+        with open(f'{probs_dir}/{strong_model}_{weak_model}/fold_{fold + 1}.json', 'w') as f:
             json.dump(win_rates, f)

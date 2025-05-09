@@ -71,7 +71,7 @@ MODEL_IDS = {
     "llama3-8b": 65,
     "llama3.1-8b": 66,
     "mistral-nemo-12b": 67,
-    "qwen2.5coder-7b": 68,
+    "qwen2.5-coder-7b": 68,
 }
 
 

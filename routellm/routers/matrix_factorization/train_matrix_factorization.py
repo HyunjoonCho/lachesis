@@ -204,8 +204,8 @@ def train_loops(
 
 if __name__ == "__main__":
     # an example of training the model
-    json_path = "../../route_data/vs.json"
-    npy_path = "../../route_data/embeddings.npy"
+    vs_data_path = "../../route_data/vs.json"
+    filtered_embeddings_path = "../../route_data/embeddings.npy"
 
     dim = 128
     batch_size = 16
@@ -217,7 +217,7 @@ if __name__ == "__main__":
     k = 5
 
     # load and filter data
-    data = json.load(open(json_path, "r"))
+    data = json.load(open(vs_data_path, "r"))
 
     filtered_data = [
         sample
@@ -245,7 +245,7 @@ if __name__ == "__main__":
             num_models=len(MODEL_IDS),
             num_prompts=len(data),
             use_proj=use_proj,
-            npy_path=npy_path,
+            npy_path=filtered_embeddings_path,
         ).to("cuda")
 
         train_loops(
