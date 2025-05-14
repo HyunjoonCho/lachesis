@@ -14,10 +14,10 @@ torch.manual_seed(42)
 np.random.seed(42)
 random.seed(42)
 
-checkpoint_dir = 'routers/matrix_factorization/trimmed_cv'
-probs_dir = 'results/trimmed_cv'
-prompt_path = 'route_data/trimmed_prompts.json'
-embeddings_path = 'route_data/trimmed_embeddings.json'
+checkpoint_dir = 'routers/matrix_factorization/cv'
+probs_dir = 'results/cv'
+prompt_path = 'route_data/initial_prompts.json'
+embeddings_path = 'route_data/embeddings.json'
 combined_fl_dir = '../AutoFL/combined_fl_results/' 
 
 def extract_min_ranks(result, bug_list):
@@ -68,26 +68,36 @@ def split_and_get_loaders_for(training_data):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--strong', '-s', default='gpt-4o')
-    parser.add_argument('--weak', '-w', default='llama3-8b')
-    parser.add_argument('--strong_result', default='d4j_gpt4o_results_R10_full.json')
-    parser.add_argument('--weak_result', default='d4j_eol_llama3_R10.json')
+    parser.add_argument('--model1', '-m1', default='gpt-4o')
+    parser.add_argument('--model2', '-m2', default='llama3-8b')
+    parser.add_argument('--model1_result', default='d4j_gpt4o_results_R10_full.json')
+    parser.add_argument('--model2_result', default='d4j_eol_llama3_R10.json')
+    parser.add_argument('--runs', '-r', default=10)
     args = parser.parse_args()
+
+    model1_result_path = os.path.join(combined_fl_dir, args.model1_result)
+    model2_result_path = os.path.join(combined_fl_dir, args.model2_result)
  
-    strong_model = args.strong
-    weak_model = args.weak
-    strong_result_path = os.path.join(combined_fl_dir, args.strong_result)
-    weak_result_path = os.path.join(combined_fl_dir, args.weak_result)
+    with open(model1_result_path) as f:
+        data = json.load(f)
+        model1_acc1 = data['summary']['acc@1'] / data['summary']['total']
+        model1_result = data['buggy_methods']
+
+    with open(model2_result_path) as f:
+        data = json.load(f)
+        model2_acc1 = data['summary']['acc@1'] / data['summary']['total']
+        model2_result = data['buggy_methods']
+        
+    if model1_acc1 > model2_acc1:
+        strong_result, weak_result = model1_result, model2_result
+        strong_model, weak_model = args.model1, args.model2
+    else:
+        weak_result, strong_result = model1_result, model2_result
+        weak_model, strong_model = args.model1, args.model2
 
     os.makedirs('route_data/pairwise', exist_ok=True)
-    vs_data_path = f'route_data/pairwise/{strong_model}_vs_{weak_model}.json'
-    filtered_embeddings_path = f'route_data/pairwise/{strong_model}_{weak_model}_embeddings.npy'
-
-    with open(strong_result_path) as f:
-        strong_result = json.load(f)['buggy_methods']
-
-    with open(weak_result_path) as f:
-        weak_result = json.load(f)['buggy_methods']
+    vs_data_path = f'route_data/pairwise/{strong_model}_vs_{weak_model}_R{args.runs}.json'
+    filtered_embeddings_path = f'route_data/pairwise/{strong_model}_{weak_model}_R{args.runs}_embeddings.npy'
 
     build_and_store_data(strong_model, strong_result, weak_model, weak_result)
 
@@ -112,8 +122,7 @@ if __name__ == "__main__":
     with open(prompt_path) as f:
         prompts = json.load(f)
 
-    with open(strong_result_path) as f:
-        combined_bug_indices = list(json.load(f)['buggy_methods'].keys()) # TODO: weak models may have smaller number of results
+    combined_bug_indices = list(strong_result.keys()) # TODO: weak models may have smaller number of results
 
     random.shuffle(filtered_data)
     kf = KFold(n_splits=k, shuffle=True, random_state=42)
@@ -132,8 +141,8 @@ if __name__ == "__main__":
             npy_path=filtered_embeddings_path,
         ).to("cuda")
         
-        os.makedirs(f"{checkpoint_dir}/{strong_model}_{weak_model}", exist_ok=True) 
-        save_path = f"{checkpoint_dir}/{strong_model}_{weak_model}/best_{fold + 1}.pt"
+        os.makedirs(f"{checkpoint_dir}/{strong_model}_{weak_model}_R{args.runs}", exist_ok=True) 
+        save_path = f"{checkpoint_dir}/{strong_model}_{weak_model}_R{args.runs}/best_{fold + 1}.pt"
         train_loops(
             model,
             train_loader,
@@ -158,6 +167,6 @@ if __name__ == "__main__":
             prompt = prompts[bug_id]
             win_rates[bug_id] = router.calculate_strong_win_rate(prompt)
 
-        os.makedirs(f'{probs_dir}/{strong_model}_{weak_model}', exist_ok=True)
-        with open(f'{probs_dir}/{strong_model}_{weak_model}/fold_{fold + 1}.json', 'w') as f:
+        os.makedirs(f'{probs_dir}/{strong_model}_{weak_model}_R{args.runs}', exist_ok=True)
+        with open(f'{probs_dir}/{strong_model}_{weak_model}_R{args.runs}/fold_{fold + 1}.json', 'w') as f:
             json.dump(win_rates, f)
